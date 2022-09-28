@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_state_management/counter_bloc.dart';
+import 'package:flutter_state_management/cubit/coba_cubit.dart';
+import 'package:flutter_state_management/cubit/counter_bloc_cubit.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,35 +43,113 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final bloc = CounterBloc();
+  final cubit = CounterBlocCubit();
+  final cobaCubit = CobaCubit();
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => bloc,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => cubit,
         ),
-        body: Center(
-          child: BlocBuilder<CounterBloc, int>(
-            bloc: bloc,
-            builder: (context, index) {
-              return Text(
-                index.toString(),
-                style: TextStyle(fontSize: 20),
-              );
+        BlocProvider(
+          create: (context) => bloc,
+        ),
+        BlocProvider(
+          create: (context) => cobaCubit,
+        ),
+      ],
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<CounterBlocCubit, int>(
+            listener: (context, state) {
+              if (state % 5 == 0) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text(
+                  'Ini angka kelipatan 5',
+                )));
+              }
             },
           ),
-        ),
-        floatingActionButton: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            FloatingActionButton(onPressed: () {
-              bloc.add(CounterIncrement());
-            }),
-            FloatingActionButton(onPressed: (() {
-              bloc.add(CounterDecrement());
-            }))
-          ],
+          BlocListener<CobaCubit, CobaState>(
+            listener: (context, state) {
+              if (state is CobaFailed) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                  state.message,
+                )));
+              }
+            },
+          ),
+        ],
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(widget.title),
+          ),
+          body: Center(
+            child: Column(
+              children: [
+                BlocBuilder<CounterBloc, int>(
+                  builder: (context, state) {
+                    return Text(
+                      state.toString(),
+                      style: const TextStyle(fontSize: 20),
+                    );
+                  },
+                ),
+                BlocBuilder<CounterBlocCubit, int>(
+                  builder: (context, state) {
+                    return Text(
+                      state.toString(),
+                      style: const TextStyle(fontSize: 20),
+                    );
+                  },
+                ),
+                BlocBuilder<CobaCubit, CobaState>(
+                  builder: (context, state) {
+                    if (state is CobaLoading) {
+                      return const CircularProgressIndicator();
+                    }
+                    if (state is CobaSuccess) {
+                      return Column(
+                          children: state.news
+                              .map((data) => Text(data.title))
+                              .toList());
+                    }
+                    return const SizedBox();
+                  },
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    cobaCubit.getNews(200);
+                  },
+                  child: const Text(
+                    'Sukses',
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    cobaCubit.getNews(400);
+                  },
+                  child: const Text(
+                    'Gagal',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FloatingActionButton(onPressed: () {
+                //bloc.add(CounterIncrement());
+                cubit.increment();
+              }),
+              FloatingActionButton(onPressed: (() {
+                bloc.add(CounterDecrement());
+              }))
+            ],
+          ),
         ),
       ),
     );
